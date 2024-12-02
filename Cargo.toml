@@ -1,0 +1,71 @@
+ [package]
+name = "picogame"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cortex-m = {version = "0.7.3", features = ["critical-section-single-core"]}
+cortex-m-rt = "0.7.0"
+embedded-hal = { version = "0.2.5" }
+embedded-time = "0.12.1"
+fugit = "0.3.7"
+nb = "1.1.0"
+
+defmt = "0.3.0"
+defmt-rtt = "0.3.0"
+panic-probe = "0.3.2"
+panic-semihosting = "0.6.0"
+
+rp2040-hal = { git = "https://github.com/rp-rs/rp-hal", branch="main", features=["rt"] }
+rp2040-boot2 = { git = "https://github.com/rp-rs/rp2040-boot2-rs", branch="main" }
+st7735-lcd = "0.8.0"
+
+[dependencies.embedded-graphics]
+version = "0.7"
+optional = true
+
+[profile.dev]
+codegen-units = 1
+debug = 2
+debug-assertions = true
+incremental = false
+opt-level = 3
+overflow-checks = true
+target = "thumbv6m-none-eabi"
+
+[target.thumbv6m-none-eabi]
+runner = "elf2uf2-rs -d"
+
+# cargo build/run --release
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = 'fat'
+opt-level = 3
+overflow-checks = false
+target = "thumbv6m-none-eabi"
+runner = "elf2uf2-rs -d"
+
+# do not optimize proc-macro crates = faster builds from scratch
+[profile.dev.build-override]
+codegen-units = 8
+debug = false
+debug-assertions = false
+opt-level = 0
+overflow-checks = false
+runner = "elf2uf2-rs -d"
+
+[features]
+default = ["graphics"]
+graphics = ["embedded-graphics"]
+
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+#runner = "probe-run --chip RP2040"
+ runner = "elf2uf2-rs -d"
+
+[build]
+target = "thumbv6m-none-eabi"
+
+
