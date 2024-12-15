@@ -91,7 +91,7 @@ fn main() -> !
     //configure the system timer as a delay provider
     //Delay new takes in two parameters the system timer , and the ahb freq as a u32 integer.
     // the ahb bus is widely used in ARM7 and ARM9 cortex M based designs
-    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+    //let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
     let mut timer = rp2040_hal::Timer::new(pac.TIMER, &mut pac.RESETS, &clocks);
 
 
@@ -127,28 +127,31 @@ fn main() -> !
         &embedded_hal::spi::MODE_0,
     );
 
-    let uart_pins =
-    (
-       pins.gpio0.into_function::<hal::gpio::FunctionUart>(),
-       pins.gpio1.into_function::<hal::gpio::FunctionUart>(),
-    );
+   // let uart_pins =
+   // (
+   //    pins.gpio0.into_function::<hal::gpio::FunctionUart>(),
+   //    pins.gpio1.into_function::<hal::gpio::FunctionUart>(),
+   // );
 
         // Create a UART driver
-        let mut uart = hal::uart::UartPeripheral::new(pac.UART0, uart_pins, &mut pac.RESETS)
-        .enable(
-            UartConfig::new(115200.Hz(), DataBits::Eight, None, StopBits::One),
-            clocks.peripheral_clock.freq(),
-        )
-        .unwrap();
+      //  let mut uart = hal::uart::UartPeripheral::new(pac.UART0, uart_pins, &mut pac.RESETS)
+      //  .enable(
+      //      UartConfig::new(115200.Hz(), DataBits::Eight, None, StopBits::One),
+      //      clocks.peripheral_clock.freq(),
+      //  )
+      //  .unwrap();
 
     // Write to the UART
-    uart.write_full_blocking(b"ADC example\r\n");
+    //uart.write_full_blocking(b"ADC example\r\n");
 
     // Enable ADC
     let mut adc = hal::Adc::new(pac.ADC, &mut pac.RESETS);
 
-    // Configure GPIO26 as an ADC input
-    let mut adc_pin_0 = hal::adc::AdcPin::new(pins.gpio26).unwrap();
+    // Configure GPIO22 GPIO26 GPIO27 and GPIO28 as an ADC input
+   // let mut adc_pin_0 = hal::adc::AdcPin::new(pins.gpio20).unwrap();
+    let mut adc_pin_1 = hal::adc::AdcPin::new(pins.gpio26).unwrap();
+    let mut adc_pin_2 = hal::adc::AdcPin::new(pins.gpio27).unwrap();
+    let mut adc_pin_3 = hal::adc::AdcPin::new(pins.gpio28).unwrap();
 
     //setup the ST7735 display
     let mut disp = st7735_lcd::ST7735::new(spi, dc, rst, true, false, 160, 128);
@@ -159,44 +162,66 @@ fn main() -> !
     disp.set_offset(0, 25);
 
     // Draw a filled square
-    Rectangle::with_corners(Point::new(36, 16), Point::new(36 + 16, 16 + 16))
+    Rectangle::with_corners(Point::new(2, 60 + 1), Point::new(2 + 16, 20))
         .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
         .draw(&mut disp)
         .unwrap();
+   
+   Rectangle::with_corners(Point::new(142, 60 + 1 ), Point::new(142 + 16, 20 ))
+      .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
+      .draw(&mut disp)
+      .unwrap();  
 
+ 
     lcd_led.set_high().unwrap();
 
-    // Draw a filled square
-    let mut paddle1 =  Rectangle::with_corners(Point::new(2, 50+ 50), Point::new(2+16, 100+60))
-    .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
-    .draw(&mut disp)
-    .unwrap();
+    let mut pval1 = 61;
+    let mut pval2 = 20;
 
-    let mut paddle2 =  Rectangle::with_corners(Point::new(142, 50+ 50 ), Point::new(142 + 16, 100+60))
+    let mut pval3 = 61;
+    let mut pval4 = 20;
+    
+    loop {
+
+         // Read the raw ADC counts from button presses
+    //let pin_adc_20: u16 = adc.read(&mut adc_pin_0).unwrap();
+    let pin_adc_26: u16 = adc.read(&mut adc_pin_1).unwrap();
+    let pin_adc_27: u16 = adc.read(&mut adc_pin_2).unwrap();
+    let pin_adc_28: u16 = adc.read(&mut adc_pin_3).unwrap();
+
+      if pin_adc_26 == 4095
+      {
+        pval1 = pval1 + 5;
+        pval2 = pval2 + 5;
+
+      }
+      if pin_adc_27 == 4095
+      {
+        pval1 = pval1 - 5;
+        pval2 = pval2 - 5;
+       
+
+      }
+      if pin_adc_28 == 4095
+      {
+        pval3 = pval3 + 5;
+        pval4 = pval4 + 5;
+        
+      }
+ 
+      disp.clear(Rgb565::BLACK).unwrap();
+
+      let mut paddle1 =  Rectangle::with_corners(Point::new(2, pval1), Point::new(2+16, pval2))
       .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
       .draw(&mut disp)
       .unwrap();
-    
-    loop {
-      // Read the raw ADC counts from the temperature sensor channel.
-      let pin_adc_counts: u16 = adc.read(&mut adc_pin_0).unwrap();
-      if pin_adc_counts == 4095
-      {
-        writeln!(
-          uart,
-          "ADC readings: is 4095"
-      )
+
+      let mut paddle2 =  Rectangle::with_corners(Point::new(142, pval3 ), Point::new(142 + 16, pval4))
+      .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
+      .draw(&mut disp)
       .unwrap();
-      }
-      else 
-      {
-        writeln!(
-          uart,
-          "no input yet \n"    
-      )
-      .unwrap();
-      }
-      delay.delay_ms(1000);     
+
+      continue;
     }
 
 }
