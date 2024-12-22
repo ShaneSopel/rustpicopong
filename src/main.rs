@@ -5,6 +5,7 @@
 #![no_main]
 
 
+use embedded_graphics::text::Text;
 /// The hal is the hardware abstraction layer and its the high level
 /// abstraction of the drivers for multiple microcontrollers.
 /// The PAC is the peripheral access crate (PAC) which providers the lower-level access to hardware
@@ -26,9 +27,10 @@ use core::fmt::Write;
 use rp2040_hal as hal;
 
 // Some traits we need
-use embedded_graphics::primitives::{Rectangle, PrimitiveStyle};
+use embedded_graphics::primitives::{circle, Circle, PrimitiveStyle, Rectangle};
 use embedded_graphics::prelude::*;
 use embedded_graphics::pixelcolor::{Rgb565};
+use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyle};
 //use embedded_time::rate::*;
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::adc::OneShot;
@@ -66,7 +68,19 @@ const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 fn main() -> !
 {
 
-   
+  // values for the paddle 1 location
+  let mut Paddle1_P1 = 61;
+  let mut Paddle1_P2 = 20;
+
+  //values for the paddle 2 location
+  let mut Paddle2_P1 = 61;
+  let mut Paddle2_P2 = 20;
+
+  //text defaults
+  let character_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+  let player1text = "Player 1: ";
+  let player2text = "Player 2: ";
+
     
     //grab our single ton objects.
     let mut pac = pac::Peripherals::take().unwrap();
@@ -175,11 +189,6 @@ fn main() -> !
  
     lcd_led.set_high().unwrap();
 
-    let mut pval1 = 61;
-    let mut pval2 = 20;
-
-    let mut pval3 = 61;
-    let mut pval4 = 20;
     
     loop {
 
@@ -191,32 +200,46 @@ fn main() -> !
 
       if pin_adc_26 == 4095
       {
-        pval1 = pval1 + 5;
-        pval2 = pval2 + 5;
+        Paddle1_P1 = Paddle1_P1 + 5;
+        Paddle1_P2 = Paddle1_P2 + 5;
 
       }
       if pin_adc_27 == 4095
       {
-        pval1 = pval1 - 5;
-        pval2 = pval2 - 5;
-       
-
+        Paddle1_P1 = Paddle1_P1 - 5;
+        Paddle1_P2 = Paddle1_P2 - 5;
       }
       if pin_adc_28 == 4095
       {
-        pval3 = pval3 + 5;
-        pval4 = pval4 + 5;
-        
+        Paddle2_P1 = Paddle2_P1 + 5;
+        Paddle2_P2 = Paddle2_P2 + 5;
       }
  
       disp.clear(Rgb565::BLACK).unwrap();
 
-      let mut paddle1 =  Rectangle::with_corners(Point::new(2, pval1), Point::new(2+16, pval2))
+      //text for scores
+      let player1_score = Text::with_baseline(player1text, Point::new(100,0), character_style, embedded_graphics::text::Baseline::Middle)
+      .draw(&mut disp)
+      .unwrap();
+
+      let player2_score = Text::with_baseline(player2text,  Point::new(50,0), character_style, embedded_graphics::text::Baseline::Middle)
+      .draw(&mut disp)
+      .unwrap();
+
+      //ball
+      let mut ball = Circle::with_center(Point::new(2, 50), 16)
       .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
       .draw(&mut disp)
       .unwrap();
 
-      let mut paddle2 =  Rectangle::with_corners(Point::new(142, pval3 ), Point::new(142 + 16, pval4))
+      //paddle 1
+      let mut paddle1 =  Rectangle::with_corners(Point::new(2, Paddle1_P1), Point::new(2+16, Paddle1_P2))
+      .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
+      .draw(&mut disp)
+      .unwrap();
+
+      //paddle 2
+      let mut paddle2 =  Rectangle::with_corners(Point::new(142, Paddle2_P1 ), Point::new(142 + 16, Paddle2_P2))
       .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
       .draw(&mut disp)
       .unwrap();
