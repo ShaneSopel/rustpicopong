@@ -5,6 +5,7 @@
 #![no_main]
 
 
+use defmt::Str;
 use embedded_graphics::text::Text;
 /// The hal is the hardware abstraction layer and its the high level
 /// abstraction of the drivers for multiple microcontrollers.
@@ -68,19 +69,35 @@ const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 fn main() -> !
 {
 
-  // values for the paddle 1 location
-  let mut Paddle1_P1 = 61;
-  let mut Paddle1_P2 = 20;
+    let mut pong: pongvals = pongvals
+    {
+      // values for the paddle 1 location
+      paddle1_P1 : 61,
+      paddle1_P2 : 20,
 
-  //values for the paddle 2 location
-  let mut Paddle2_P1 = 61;
-  let mut Paddle2_P2 = 20;
+      //values for the paddle 2 location
+      paddle2_P1 : 61,
+      paddle2_P2 : 20,
 
-  //text defaults
-  let character_style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
-  let player1text = "Player 1: ";
-  let player2text = "Player 2: ";
+      //values for the ball location
+      ball_x : 1,
+      ball_y : 2,
 
+      //values for game height and width (LCD is 128 x 160)
+      game_height : 128,
+      game_width : 160,
+
+      player1val : 0,
+      player2val : 0,
+      player1text : "Player 1: ",
+      player2text : "Player 2: ",
+      player1_text_location : Point::new(50,0),
+      player2_text_location : Point::new(50,0),
+
+    };
+
+    //text defaults
+    let character_style = MonoTextStyle::new(&FONT_6X10, Rgb565::GREEN);
     
     //grab our single ton objects.
     let mut pac = pac::Peripherals::take().unwrap();
@@ -166,6 +183,9 @@ fn main() -> !
     let mut adc_pin_1 = hal::adc::AdcPin::new(pins.gpio26).unwrap();
     let mut adc_pin_2 = hal::adc::AdcPin::new(pins.gpio27).unwrap();
     let mut adc_pin_3 = hal::adc::AdcPin::new(pins.gpio28).unwrap();
+    let mut adc_pin_4 = 1;
+    let mut adc_pin_5 = 2;
+
 
     //setup the ST7735 display
     let mut disp = st7735_lcd::ST7735::new(spi, dc, rst, true, false, 160, 128);
@@ -200,51 +220,110 @@ fn main() -> !
 
       if pin_adc_26 == 4095
       {
-        Paddle1_P1 = Paddle1_P1 + 5;
-        Paddle1_P2 = Paddle1_P2 + 5;
+        pong.paddle1_P1 = pong.paddle1_P1 + 5;
+        pong.paddle1_P2 = pong.paddle1_P2 + 5;
 
       }
       if pin_adc_27 == 4095
       {
-        Paddle1_P1 = Paddle1_P1 - 5;
-        Paddle1_P2 = Paddle1_P2 - 5;
+        pong.paddle1_P1 = pong.paddle1_P1 - 5;
+        pong.paddle1_P2 = pong.paddle1_P2 - 5;
       }
       if pin_adc_28 == 4095
       {
-        Paddle2_P1 = Paddle2_P1 + 5;
-        Paddle2_P2 = Paddle2_P2 + 5;
+        pong.paddle2_P1 = pong.paddle2_P1 + 5;
+        pong.paddle2_P2 = pong.paddle2_P2 + 5;
       }
  
       disp.clear(Rgb565::BLACK).unwrap();
 
       //text for scores
-      let player1_score = Text::with_baseline(player1text, Point::new(100,0), character_style, embedded_graphics::text::Baseline::Middle)
+      let player1_score = Text::with_baseline(pong.player1text, pong.player1_text_location, character_style, embedded_graphics::text::Baseline::Middle)
       .draw(&mut disp)
       .unwrap();
 
-      let player2_score = Text::with_baseline(player2text,  Point::new(50,0), character_style, embedded_graphics::text::Baseline::Middle)
+      let player2_score = Text::with_baseline(pong.player2text,  pong.player2_text_location, character_style, embedded_graphics::text::Baseline::Middle)
       .draw(&mut disp)
       .unwrap();
+
+      // net (I might add a net down the center... just a bunch of dashes)
+
+
+      // score player 1?
+      if (pong.ball_x > pong.game_width)
+      {
+        pong.player1val = pong.player1val + 1;
+      }
+
+      // score player 2?
+      if (pong.ball_x <= 0)
+      {
+        pong.player2val = pong.player2val + 1;
+      }
 
       //ball
-      let mut ball = Circle::with_center(Point::new(2, 50), 16)
+      let mut ball = Circle::with_center(Point::new(pong.ball_x, pong.ball_y), 16)
       .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
       .draw(&mut disp)
       .unwrap();
 
       //paddle 1
-      let mut paddle1 =  Rectangle::with_corners(Point::new(2, Paddle1_P1), Point::new(2+16, Paddle1_P2))
+      let mut paddle1 =  Rectangle::with_corners(Point::new(2, pong.paddle1_P1), Point::new(2+16, pong.paddle1_P2))
       .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
       .draw(&mut disp)
       .unwrap();
 
       //paddle 2
-      let mut paddle2 =  Rectangle::with_corners(Point::new(142, Paddle2_P1 ), Point::new(142 + 16, Paddle2_P2))
+      let mut paddle2 =  Rectangle::with_corners(Point::new(142, pong.paddle2_P1 ), Point::new(142 + 16, pong.paddle2_P2))
       .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
       .draw(&mut disp)
       .unwrap();
 
       continue;
     }
+
+}
+
+struct pongvals<'a>
+{
+      // values for the paddle 1 location
+      paddle1_P1 : i32,
+      paddle1_P2 : i32,
+  
+      //values for the paddle 2 location
+      paddle2_P1 : i32,
+      paddle2_P2 : i32,
+  
+      //values for the ball location
+      ball_x : i32,
+      ball_y : i32,
+  
+      //values for game height and width (LCD is 128 x 160)
+      game_height : i32,
+      game_width  : i32,
+  
+      //text defaults
+      
+      player1val : u16,
+      player2val : u16,
+      player2text : &'a str,
+      player1text : &'a str,
+      player2_text_location : Point,
+      player1_text_location : Point,
+}
+
+//add these fucntions as traits of struct? we will see
+fn reset_game()
+{
+
+}
+
+fn player1_score()
+{
+
+}
+
+fn player2_score()
+{
 
 }
