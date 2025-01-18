@@ -249,8 +249,6 @@ fn main() -> !
     .unwrap();
 
     // net (I might add a net down the center... just a bunch of dashes)
-
-    pong.player1_score(spi,dc, rst, disp);
     pong.player2_score();
     
     //ball
@@ -275,8 +273,6 @@ fn main() -> !
     }
 
 }
-
-
 
 pub struct Pongvals<'a,>
 {
@@ -311,13 +307,13 @@ pub struct Pongvals<'a,>
       player1_text_location : Point,
 }
 
-pub trait PongFunctions<'a, spi, dc, rst>
+pub trait PongFunctions<'a>
 {
 
 //add these fucntions as traits of struct? we will see
 fn reset_game(&mut self);
 
-fn player1_score(&mut self, disp: st7735_lcd::ST7735<spi: spi::Write<u8>, dc: dyn OutputPin<Error = ()>, rst: OutputPin<Error =()>);
+//fn player1_score(&mut self, disp: st7735_lcd::ST7735<spi: spi::Write<u8>, dc: dyn OutputPin<Error = ()>, rst: OutputPin<Error =()>);
 fn player2_score(&mut self);
 
 fn player1_moveup(&mut self, pin_adc_26: u16) -> bool;
@@ -329,22 +325,22 @@ fn player2_movedown(& mut self, pin_adc_29 : u16) -> bool;
 
 }
 
-impl<'a, spi, dc ,rst> PongFunctions<'a, spi, dc , rst> for Pongvals<'a>
+impl<'a> PongFunctions<'a> for Pongvals<'a>
 {
   fn reset_game(&mut self) 
   {
    
   }
 
-  fn player1_score(&mut self,  disp: st7735_lcd::ST7735<spi, dc, rst>) 
-  {
+  //fn player1_score(&mut self,  disp: st7735_lcd::ST7735<spi, dc, rst>) 
+  //{
     // score player 1?
-    if self.ball_x > self.game_width
-    {
-      self.player1val = self.player1val + 1;
-    }
+  //  if self.ball_x > self.game_width
+  //  {
+  //    self.player1val = self.player1val + 1;
+  //  }
       
-  }
+ // }
 
   fn player2_score(&mut self) 
   {
