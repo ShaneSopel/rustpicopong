@@ -5,6 +5,9 @@
 #![no_main]
 
 
+use core::error;
+use core::fmt::{Display, Error};
+
 use defmt::Str;
 use embedded_graphics::text::Text;
 /// The hal is the hardware abstraction layer and its the high level
@@ -23,6 +26,7 @@ use cortex_m_rt::entry;
 //ensure we halt the program on panic.
 use defmt_rtt as _;
 
+use rp2040_hal::pac::spi0;
 //use core::fmt::Write;
 // Alias for our HAL crate
 use rp2040_hal as hal;
@@ -33,12 +37,13 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::pixelcolor::{Rgb565};
 use embedded_graphics::mono_font::{ascii::FONT_6X10, MonoTextStyle};
 //use embedded_time::rate::*;
+use embedded_hal::blocking::spi;
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::adc::OneShot;
 use fugit::RateExtU32;
 use rp2040_hal::clocks::Clock;
 //use rp2040_hal::entry;
-use st7735_lcd;
+use st7735_lcd::{self, ST7735};
 use st7735_lcd::Orientation;
 // UART related types
 //use hal::uart::{DataBits, StopBits, UartConfig};
@@ -80,12 +85,17 @@ fn main() -> !
       paddle2_p2 : 20,
 
       //values for the ball location
-      ball_x : 1,
+      ball_x : 20,
       ball_y : 2,
+      ball_diameter: 12,
 
       //values for game height and width (LCD is 128 x 160)
       game_height : 128,
       game_width : 160,
+
+      state_move_paddle1 : false,
+      state_move_paddle2 : false,
+      state_move_ball : true,
 
       player1val : 0,
       player2val : 0,
@@ -187,7 +197,7 @@ fn main() -> !
 
 
     //setup the ST7735 display
-    let mut disp = st7735_lcd::ST7735::new(spi, dc, rst, true, false, 160, 128);
+    let mut disp = st7735_lcd::ST7735::new(spi, dc, rst, true, false, 160, 128);    
 
     disp.init(&mut timer).unwrap();
     disp.set_orientation(&Orientation::Landscape).unwrap();
@@ -227,7 +237,7 @@ fn main() -> !
     pong.player2_moveup(pin_adc_28);
     pong.player2_movedown(pin_adc_29);
 
-    disp.clear(Rgb565::BLACK).unwrap();
+   // disp.clear(Rgb565::BLACK).unwrap();
 
     //text for scores
     let player1_score = Text::with_baseline(pong.player1text, pong.player1_text_location, character_style, embedded_graphics::text::Baseline::Middle)
@@ -240,14 +250,15 @@ fn main() -> !
 
     // net (I might add a net down the center... just a bunch of dashes)
 
-    pong.player1_score();
+    pong.player1_score(spi,dc, rst, disp);
     pong.player2_score();
     
     //ball
-    let mut ball = Circle::with_center(Point::new(pong.ball_x, pong.ball_y), 16)
+    let mut ball = Circle::with_center(Point::new(pong.ball_x, pong.ball_y), pong.ball_diameter)
     .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
     .draw(&mut disp)
     .unwrap();
+
 
     //paddle 1
     let mut paddle1 =  Rectangle::with_corners(Point::new(2, pong.paddle1_p1), Point::new(2+16, pong.paddle1_p2))
@@ -260,18 +271,19 @@ fn main() -> !
     .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
     .draw(&mut disp)
     .unwrap();
-
-    continue;
+    
     }
 
 }
 
-pub struct Pongvals<'a>
+
+
+pub struct Pongvals<'a,>
 {
       // values for the paddle 1 location
       paddle1_p1 : i32,
       paddle1_p2 : i32,
-  
+
       //values for the paddle 2 location
       paddle2_p1 : i32,
       paddle2_p2 : i32,
@@ -279,6 +291,7 @@ pub struct Pongvals<'a>
       //values for the ball location
       ball_x : i32,
       ball_y : i32,
+      ball_diameter: u32,
   
       //values for game height and width (LCD is 128 x 160)
       game_height : i32,
@@ -289,7 +302,7 @@ pub struct Pongvals<'a>
       state_move_paddle2 : bool,
       state_move_ball : bool,
   
-      //text defaults
+      //Text Defaults
       player1val : u16,
       player2val : u16,
       player2text : &'a str,
@@ -298,29 +311,32 @@ pub struct Pongvals<'a>
       player1_text_location : Point,
 }
 
-pub trait PongFunctions<'a>
+pub trait PongFunctions<'a, spi, dc, rst>
 {
-  //add these fucntions as traits of struct? we will see
-fn reset_game();
 
-fn player1_score(&mut self);
+//add these fucntions as traits of struct? we will see
+fn reset_game(&mut self);
+
+fn player1_score(&mut self, disp: st7735_lcd::ST7735<spi: spi::Write<u8>, dc: dyn OutputPin<Error = ()>, rst: OutputPin<Error =()>);
 fn player2_score(&mut self);
 
 fn player1_moveup(&mut self, pin_adc_26: u16) -> bool;
-fn player1_movedown(&mut self , pin_adc_27: u16) -> bool;
+fn player1_movedown(&mut self ,pin_adc_27: u16) -> bool;
 
 fn player2_moveup(& mut self, pin_adc_28 : u16) -> bool;
 fn player2_movedown(& mut self, pin_adc_29 : u16) -> bool;
 
+
 }
 
-impl<'a> PongFunctions<'a> for Pongvals<'a>
+impl<'a, spi, dc ,rst> PongFunctions<'a, spi, dc , rst> for Pongvals<'a>
 {
-  fn reset_game() {
-      
+  fn reset_game(&mut self) 
+  {
+   
   }
 
-  fn player1_score(&mut self) 
+  fn player1_score(&mut self,  disp: st7735_lcd::ST7735<spi, dc, rst>) 
   {
     // score player 1?
     if self.ball_x > self.game_width
@@ -333,7 +349,7 @@ impl<'a> PongFunctions<'a> for Pongvals<'a>
   fn player2_score(&mut self) 
   {
      // score player 2?
-     if (self.ball_x <= 0)
+     if self.ball_x <= 0
      {
        self.player2val = self.player2val + 1;
      }
@@ -354,7 +370,7 @@ impl<'a> PongFunctions<'a> for Pongvals<'a>
       }
   }
 
-  fn player1_movedown(&mut self , pin_adc_27: u16) -> bool
+  fn player1_movedown(&mut self, pin_adc_27: u16) -> bool
   {
     if pin_adc_27 == 4095
     {
