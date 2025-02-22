@@ -9,6 +9,7 @@ use core::error;
 use core::fmt::{Display, Error};
 
 use defmt::Str;
+use embedded_graphics::mono_font::iso_8859_16::FONT_4X6;
 use embedded_graphics::text::Text;
 /// The hal is the hardware abstraction layer and its the high level
 /// abstraction of the drivers for multiple microcontrollers.
@@ -79,11 +80,11 @@ fn main() -> !
     let mut pong: Pongvals = Pongvals
     {
       // values for the paddle 1 location
-      paddle1_p1 : 61,
+      paddle1_p1 : 51,
       paddle1_p2 : 20,
 
       //values for the paddle 2 location
-      paddle2_p1 : 61,
+      paddle2_p1 : 51,
       paddle2_p2 : 20,
 
       //values for the ball location
@@ -101,10 +102,10 @@ fn main() -> !
 
       player1val : 0,
       player2val : 0,
-      player1text : "Player 1: ",
-      player2text : "Player 2: ",
-      player1_text_location : Point::new(50,0),
-      player2_text_location : Point::new(50,0),
+      player1text : "P1:",
+      player2text : "P2:",
+      player1_text_location : Point::new(35,115),
+      player2_text_location : Point::new(100,115),
 
     };
 
@@ -207,22 +208,34 @@ fn main() -> !
     disp.set_offset(0, 25);
 
     // Draw a filled square
-    Rectangle::with_corners(Point::new(2, 60 + 1), Point::new(2 + 16, 20))
+    Rectangle::with_corners(Point::new(2, 50 + 1), Point::new(2 + 16, 20))
         .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
         .draw(&mut disp)
         .unwrap();
    
-   Rectangle::with_corners(Point::new(142, 60 + 1 ), Point::new(142 + 16, 20 ))
+    Rectangle::with_corners(Point::new(142, 50 + 1 ), Point::new(142 + 16, 20 ))
       .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
       .draw(&mut disp)
       .unwrap();  
 
+    //borders 
+    //text for scores
+    let player1_score = Text::new(pong.player1text + pong.player1val, pong.player1_text_location, character_style)
+    .draw(&mut disp)
+    .unwrap();
+
+    let player2_score = Text::new(pong.player2text,  pong.player2_text_location, character_style)
+    .draw(&mut disp)
+    .unwrap();
+   
+    //bottom
     Rectangle::with_center(Point::new(80, 100), Size::new(155, 5))
     .into_styled(PrimitiveStyle::with_stroke(Rgb565::RED, 1))
     .draw(&mut disp)
     .unwrap(); 
 
-     Rectangle::with_center(Point::new(80, 110), Size::new(155, 5))
+    //top
+     Rectangle::with_center(Point::new(80, 121), Size::new(155, 5))
     .into_styled(PrimitiveStyle::with_stroke(Rgb565::RED, 1))
     .draw(&mut disp)
     .unwrap();   
@@ -248,17 +261,8 @@ fn main() -> !
     pong.player2_moveup(pin_adc_28, &mut disp);
     pong.player2_movedown(pin_adc_29, &mut disp);
 
-    //text for scores
-    //let player1_score = Text::with_baseline(pong.player1text, pong.player1_text_location, character_style, embedded_graphics::text::Baseline::Middle)
-    //.draw(&mut disp)
-    //.unwrap();
-
-    //let player2_score = Text::with_baseline(pong.player2text,  pong.player2_text_location, character_style, embedded_graphics::text::Baseline::Middle)
-    //.draw(&mut disp)
-    //.unwrap();
-
+ 
     // net (I might add a net down the center... just a bunch of dashes)
-   // pong.player2_score(disp);
     
     //ball
     let mut ball = Circle::with_center(Point::new(pong.ball_x, pong.ball_y), pong.ball_diameter)
@@ -351,9 +355,13 @@ impl Pongvals
   {
     if pin_adc_26 == 4095
       {
-        self.paddle1_p1 = self.paddle1_p1 + 5;
-        self.paddle1_p2 = self.paddle1_p2 + 5;
- 
+
+        if self.paddle1_p1 < 71
+        {
+          self.paddle1_p1 = self.paddle1_p1 + 5;
+          self.paddle1_p2 = self.paddle1_p2 + 5;
+        }
+        
         self.clear_screen(disp);
 
         return self.state_move_paddle1 == true;
@@ -367,8 +375,11 @@ impl Pongvals
   {
     if pin_adc_27 == 4095
     {
+     if self.paddle1_p1 > 31
+     {
       self.paddle1_p1 = self.paddle1_p1 - 5;
       self.paddle1_p2 = self.paddle1_p2 - 5;
+     }
 
       self.clear_screen(disp);
 
@@ -384,8 +395,11 @@ impl Pongvals
   {
     if pin_adc_28 == 4095
     {
-      self.paddle2_p1 = self.paddle2_p1 + 5;
-      self.paddle2_p2 = self.paddle2_p2 + 5;
+      if self.paddle2_p1 < 71
+      {
+        self.paddle2_p1 = self.paddle2_p1 + 5;
+        self.paddle2_p2 = self.paddle2_p2 + 5;
+      }
 
       self.clear_screen(disp);
 
@@ -401,8 +415,11 @@ impl Pongvals
   {
     if pin_adc_29 == 4095
     {
+      if self.paddle2_p1 > 31
+     {
       self.paddle2_p1 = self.paddle2_p1 - 5;
       self.paddle2_p2 = self.paddle2_p2 - 5;
+     }
 
       self.clear_screen(disp);
 
