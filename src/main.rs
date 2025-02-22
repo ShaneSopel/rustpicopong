@@ -62,6 +62,8 @@ pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 // Adjust if your board hsa a different freq.
 const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 
+type st7735_lcd_t =  ST7735<rp2040_hal::Spi<rp2040_hal::spi::Enabled, pac::SPI0, (rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio7, rp2040_hal::gpio::FunctionSpi, 
+rp2040_hal::gpio::PullDown>, rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio4, rp2040_hal::gpio::FunctionSpi, rp2040_hal::gpio::PullDown>, rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio6, rp2040_hal::gpio::FunctionSpi, rp2040_hal::gpio::PullDown>)>, rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio13, rp2040_hal::gpio::FunctionSio<rp2040_hal::gpio::SioOutput>, rp2040_hal::gpio::PullDown>, rp2040_hal::gpio::Pin<rp2040_hal::gpio::bank0::Gpio14, rp2040_hal::gpio::FunctionSio<rp2040_hal::gpio::SioOutput>, rp2040_hal::gpio::PullDown>>;
 
 /// entry point to our bare metal application.
 /// 
@@ -85,8 +87,8 @@ fn main() -> !
       paddle2_p2 : 20,
 
       //values for the ball location
-      ball_x : 20,
-      ball_y : 2,
+      ball_x : 80,
+      ball_y : 80,
       ball_diameter: 12,
 
       //values for game height and width (LCD is 128 x 160)
@@ -215,6 +217,15 @@ fn main() -> !
       .draw(&mut disp)
       .unwrap();  
 
+    Rectangle::with_center(Point::new(80, 100), Size::new(155, 5))
+    .into_styled(PrimitiveStyle::with_stroke(Rgb565::RED, 1))
+    .draw(&mut disp)
+    .unwrap(); 
+
+     Rectangle::with_center(Point::new(80, 110), Size::new(155, 5))
+    .into_styled(PrimitiveStyle::with_stroke(Rgb565::RED, 1))
+    .draw(&mut disp)
+    .unwrap();   
  
     lcd_led.set_high().unwrap();
 
@@ -231,36 +242,27 @@ fn main() -> !
     //let pin_adc_y:  u16 = adc.read(&mut adc_pin_5).unwrap();
 
     //move the players using functions
-    pong.player1_moveup(pin_adc_26);
-    pong.player1_movedown(pin_adc_27);
+    pong.player1_moveup(pin_adc_26,   &mut disp);
+    pong.player1_movedown(pin_adc_27, &mut disp);
 
-    pong.player2_moveup(pin_adc_28);
-    pong.player2_movedown(pin_adc_29);
-
-   // disp.clear(Rgb565::BLACK).unwrap();
+    pong.player2_moveup(pin_adc_28, &mut disp);
+    pong.player2_movedown(pin_adc_29, &mut disp);
 
     //text for scores
-    let player1_score = Text::with_baseline(pong.player1text, pong.player1_text_location, character_style, embedded_graphics::text::Baseline::Middle)
-    .draw(&mut disp)
-    .unwrap();
+    //let player1_score = Text::with_baseline(pong.player1text, pong.player1_text_location, character_style, embedded_graphics::text::Baseline::Middle)
+    //.draw(&mut disp)
+    //.unwrap();
 
-    let player2_score = Text::with_baseline(pong.player2text,  pong.player2_text_location, character_style, embedded_graphics::text::Baseline::Middle)
-    .draw(&mut disp)
-    .unwrap();
+    //let player2_score = Text::with_baseline(pong.player2text,  pong.player2_text_location, character_style, embedded_graphics::text::Baseline::Middle)
+    //.draw(&mut disp)
+    //.unwrap();
 
     // net (I might add a net down the center... just a bunch of dashes)
-    pong.player2_score();
+   // pong.player2_score(disp);
     
     //ball
     let mut ball = Circle::with_center(Point::new(pong.ball_x, pong.ball_y), pong.ball_diameter)
-    .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
-    .draw(&mut disp)
-    .unwrap();
-
-
-    //paddle 1
-    let mut paddle1 =  Rectangle::with_corners(Point::new(2, pong.paddle1_p1), Point::new(2+16, pong.paddle1_p2))
-    .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
+    .into_styled(PrimitiveStyle::with_stroke(Rgb565::BLUE, 1))
     .draw(&mut disp)
     .unwrap();
 
@@ -269,12 +271,18 @@ fn main() -> !
     .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
     .draw(&mut disp)
     .unwrap();
+
+    //paddle 1
+    let mut paddle1 =  Rectangle::with_corners(Point::new(2, pong.paddle1_p1), Point::new(2+16, pong.paddle1_p2))
+    .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
+    .draw(&mut disp)
+    .unwrap();
     
     }
 
 }
 
-pub struct Pongvals<'a,>
+pub struct Pongvals
 {
       // values for the paddle 1 location
       paddle1_p1 : i32,
@@ -301,48 +309,30 @@ pub struct Pongvals<'a,>
       //Text Defaults
       player1val : u16,
       player2val : u16,
-      player2text : &'a str,
-      player1text : &'a str,
+      player2text : &'static str,
+      player1text : &'static str,
       player2_text_location : Point,
       player1_text_location : Point,
 }
 
-pub trait PongFunctions<'a>
-{
-
-//add these fucntions as traits of struct? we will see
-fn reset_game(&mut self);
-
-//fn player1_score(&mut self, disp: st7735_lcd::ST7735<spi: spi::Write<u8>, dc: dyn OutputPin<Error = ()>, rst: OutputPin<Error =()>);
-fn player2_score(&mut self);
-
-fn player1_moveup(&mut self, pin_adc_26: u16) -> bool;
-fn player1_movedown(&mut self ,pin_adc_27: u16) -> bool;
-
-fn player2_moveup(& mut self, pin_adc_28 : u16) -> bool;
-fn player2_movedown(& mut self, pin_adc_29 : u16) -> bool;
-
-
-}
-
-impl<'a> PongFunctions<'a> for Pongvals<'a>
+impl Pongvals
 {
   fn reset_game(&mut self) 
   {
    
   }
 
-  //fn player1_score(&mut self,  disp: st7735_lcd::ST7735<spi, dc, rst>) 
-  //{
-    // score player 1?
-  //  if self.ball_x > self.game_width
-  //  {
-  //    self.player1val = self.player1val + 1;
-  //  }
+  fn player1_score(&mut self,  disp: &st7735_lcd_t) 
+  {
+     //score player 1?
+    if self.ball_x > self.game_width
+    {
+      self.player1val = self.player1val + 1;
+    }
       
- // }
+  }
 
-  fn player2_score(&mut self) 
+  fn player2_score(&mut self, disp: &st7735_lcd_t) 
   {
      // score player 2?
      if self.ball_x <= 0
@@ -352,12 +342,19 @@ impl<'a> PongFunctions<'a> for Pongvals<'a>
       
   }
 
-  fn player1_moveup(&mut self, pin_adc_26: u16) -> bool 
+  fn clear_screen(&mut self, disp: &mut st7735_lcd_t)
+  {
+    disp.clear(Rgb565::BLACK).unwrap();
+  }
+
+  fn player1_moveup(&mut self, pin_adc_26: u16, disp: &mut st7735_lcd_t) -> bool 
   {
     if pin_adc_26 == 4095
       {
         self.paddle1_p1 = self.paddle1_p1 + 5;
         self.paddle1_p2 = self.paddle1_p2 + 5;
+ 
+        self.clear_screen(disp);
 
         return self.state_move_paddle1 == true;
       }
@@ -366,12 +363,14 @@ impl<'a> PongFunctions<'a> for Pongvals<'a>
       }
   }
 
-  fn player1_movedown(&mut self, pin_adc_27: u16) -> bool
+  fn player1_movedown(&mut self, pin_adc_27: u16, disp: &mut st7735_lcd_t) -> bool
   {
     if pin_adc_27 == 4095
     {
       self.paddle1_p1 = self.paddle1_p1 - 5;
       self.paddle1_p2 = self.paddle1_p2 - 5;
+
+      self.clear_screen(disp);
 
       return self.state_move_paddle1 == true;
     }
@@ -381,12 +380,14 @@ impl<'a> PongFunctions<'a> for Pongvals<'a>
 
   }
 
-  fn player2_moveup(& mut self, pin_adc_28 : u16) -> bool 
+  fn player2_moveup(& mut self, pin_adc_28 : u16, disp: &mut st7735_lcd_t) -> bool 
   {
     if pin_adc_28 == 4095
     {
       self.paddle2_p1 = self.paddle2_p1 + 5;
       self.paddle2_p2 = self.paddle2_p2 + 5;
+
+      self.clear_screen(disp);
 
       return self.state_move_paddle2 == true;
     }
@@ -396,12 +397,14 @@ impl<'a> PongFunctions<'a> for Pongvals<'a>
     }
   }
 
-  fn player2_movedown(& mut self, pin_adc_29 : u16) -> bool 
+  fn player2_movedown(& mut self, pin_adc_29 : u16, disp: &mut st7735_lcd_t) -> bool 
   {
     if pin_adc_29 == 4095
     {
       self.paddle2_p1 = self.paddle2_p1 - 5;
       self.paddle2_p2 = self.paddle2_p2 - 5;
+
+      self.clear_screen(disp);
 
       return self.state_move_paddle2 == true;
     }
