@@ -80,25 +80,28 @@ fn main() -> !
     let mut pong: Pongvals = Pongvals
     {
       // values for the paddle 1 location
-      paddle1_p1 : 51,
-      paddle1_p2 : 20,
+      paddle1_p1 : 30,
+      paddle1_p2 : 60,
 
       //values for the paddle 2 location
-      paddle2_p1 : 51,
-      paddle2_p2 : 20,
+      paddle2_p1 : 30,
+      paddle2_p2 : 60,
 
       //values for the ball location
-      ball_x : 80,
-      ball_y : 80,
-      ball_diameter: 12,
-
+      ball_x : 75,
+      ball_y : 45,
+      ball_diameter: 6,
+      
       //values for game height and width (LCD is 128 x 160)
       game_height : 128,
       game_width : 160,
 
       state_move_paddle1 : false,
       state_move_paddle2 : false,
-      state_move_ball : true,
+
+      velocity: 1,
+
+      tick: 0,
 
       player1val : 0,
       player2val : 0,
@@ -208,19 +211,19 @@ fn main() -> !
     disp.set_offset(0, 25);
 
     // Draw a filled square
-    Rectangle::with_corners(Point::new(2, 50 + 1), Point::new(2 + 16, 20))
+    /*Rectangle::with_corners(Point::new(2, 60 + 1), Point::new(2 + 16, 20))
         .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
         .draw(&mut disp)
         .unwrap();
    
-    Rectangle::with_corners(Point::new(142, 50 + 1 ), Point::new(142 + 16, 20 ))
+    Rectangle::with_corners(Point::new(142, 60 + 1 ), Point::new(142 + 16, 20 ))
       .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
       .draw(&mut disp)
-      .unwrap();  
+      .unwrap();  */
 
     //borders 
     //text for scores
-    let player1_score = Text::new(pong.player1text + pong.player1val, pong.player1_text_location, character_style)
+    let player1_score = Text::new(pong.player1text, pong.player1_text_location, character_style)
     .draw(&mut disp)
     .unwrap();
 
@@ -281,6 +284,10 @@ fn main() -> !
     .into_styled(PrimitiveStyle::with_stroke(Rgb565::GREEN, 1))
     .draw(&mut disp)
     .unwrap();
+
+    pong.ball_update(& mut disp);
+
+    pong.tick = pong.tick + 1;
     
     }
 
@@ -308,7 +315,12 @@ pub struct Pongvals
       //Game States
       state_move_paddle1 : bool,
       state_move_paddle2 : bool,
-      state_move_ball : bool,
+
+      //speed
+      velocity : i32,
+
+      //time
+      tick: i32,
   
       //Text Defaults
       player1val : u16,
@@ -344,6 +356,22 @@ impl Pongvals
        self.player2val = self.player2val + 1;
      }
       
+  }
+
+  fn ball_update(&mut self, disp: &mut st7735_lcd_t)
+  {
+
+    //paddle1_p1: i32, paddle1_p2: i32, paddle2_p1: i32, paddle2_p2: i32,
+    // calculate the velocity of the ball. 
+
+    //start the ball moving towards the paddle that last scored, if its the beginning of the game 
+    // make it go left by default 
+
+    self.ball_x = self.ball_x + 2;
+
+    self.clear_screen(disp);
+
+
   }
 
   fn clear_screen(&mut self, disp: &mut st7735_lcd_t)
